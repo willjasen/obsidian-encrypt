@@ -8,6 +8,7 @@ export default class DecryptModal extends Modal {
 	canDecryptInPlace = true;
 	isPreviewMode = true; // Show preview by default
 	private cTextArea: TextAreaComponent | undefined;
+	private contentContainer: HTMLElement | undefined;
 
 	constructor(
 		app: App,
@@ -33,18 +34,18 @@ export default class DecryptModal extends Modal {
 					.setValue(this.isPreviewMode)
 					.onChange(value => {
 						this.isPreviewMode = value;
-						this.refreshContent(contentEl);
+						this.refreshContent();
 					});
 				toggle.toggleEl.setAttribute('aria-label', 'Toggle between preview and edit mode');
 			});
 		modeToggleSetting.nameEl.style.marginBottom = '0.5em';
 
 		// Container for preview or edit content
-		const contentContainer = document.createElement('div');
-		contentContainer.style.marginTop = '1em';
-		contentEl.appendChild(contentContainer);
+		this.contentContainer = document.createElement('div');
+		this.contentContainer.style.marginTop = '1em';
+		contentEl.appendChild(this.contentContainer);
 
-		this.refreshContent(contentEl, contentContainer);
+		this.refreshContent();
 
 		const sActions = new Setting(contentEl);
 
@@ -87,18 +88,12 @@ export default class DecryptModal extends Modal {
 		}
 	}
 
-	private refreshContent(contentEl: HTMLElement, contentContainer?: HTMLElement) {
-		// Find or create the content container
-		if (!contentContainer) {
-			contentContainer = contentEl.querySelector('.meld-decrypt-content-container') as HTMLElement;
-			if (!contentContainer) {
-				contentContainer = document.createElement('div');
-				contentContainer.classList.add('meld-decrypt-content-container');
-				contentEl.appendChild(contentContainer);
-			}
+	private refreshContent() {
+		if (!this.contentContainer) {
+			return;
 		}
 
-		contentContainer.empty();
+		this.contentContainer.empty();
 
 		if (this.isPreviewMode) {
 			// Render markdown preview
@@ -109,14 +104,14 @@ export default class DecryptModal extends Modal {
 			previewContainer.style.border = '1px solid var(--background-modifier-border)';
 			previewContainer.style.borderRadius = '4px';
 			previewContainer.style.padding = '8px';
-			contentContainer.appendChild(previewContainer);
+			this.contentContainer.appendChild(previewContainer);
 
 			// Use MarkdownRenderer to render the markdown content
 			const mdComponent = new Component();
 			MarkdownRenderer.renderMarkdown(this.text, previewContainer, '', mdComponent);
 		} else {
 			// Show edit mode with textarea
-			const setting = new Setting(contentContainer);
+			const setting = new Setting(this.contentContainer);
 			setting.addTextArea(cb => {
 				this.cTextArea = cb;
 				cb.setValue(this.text);
@@ -125,6 +120,8 @@ export default class DecryptModal extends Modal {
 				cb.inputEl.focus();
 				cb.onChange(value => {
 					this.text = value;
+					// Real-time update preview if we switch back to preview mode
+					// This ensures we're always working with the latest text
 				});
 			});
 			setting.settingEl.querySelector('.setting-item-info')?.remove();
